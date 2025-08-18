@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <rect width="800" height="450" fill="#0b0c10"></rect>
+  <rect x="40" y="40" width="720" height="370" rx="16" fill="#10141c" stroke="#263455"></rect>
+  <g stroke="#88a8ff" fill="none" stroke-width="2" opacity="0.9">
+    <rect x="70" y="80" width="660" height="40" rx="8"></rect>
+    <rect x="70" y="140" width="200" height="40" rx="8"></rect>
+    <rect x="290" y="140" width="200" height="40" rx="8"></rect>
+    <rect x="510" y="140" width="220" height="40" rx="8"></rect>
+  </g>
+  <text x="60" y="420" fill="#cfe1ff" font-size="20">Common UI Menu Framework — UE 5.6</text>
+</svg>

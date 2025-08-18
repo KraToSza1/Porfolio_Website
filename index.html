@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Raymond Van Der Walt - Interactive Portfolio</title>
+  <link rel="canonical" href="/" />
+
+  <meta name="description" content="Raymond Van Der Walt — Frontend & Game Developer. Cinematic UI, WebGL/Canvas, UE5 widgets, performance-first web experiences." />
+  <meta name="theme-color" content="#000000" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="robots" content="index,follow" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Raymond Van Der Walt - Interactive Portfolio" />
+  <meta property="og:description" content="Cinematic UI + interactive gameplay. Engage. Explore. Interact." />
+  <meta property="og:type" content="website" />
+  <!-- moved from assets/images/... to assets/... to avoid 404 -->
+  <meta property="og:image" content="assets/og-cover.png" />
+  <meta property="og:locale" content="en_ZA" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Raymond Van Der Walt - Interactive Portfolio" />
+  <meta name="twitter:description" content="Cinematic UI + interactive gameplay. Engage. Explore. Interact." />
+  <!-- moved from assets/images/... to assets/... to avoid 404 -->
+  <meta name="twitter:image" content="assets/og-cover.png" />
+
+  <!-- Icons (avoid 404s) -->
+  <!-- moved from assets/images/... to assets/... -->
+  <link rel="icon" href="assets/favicon.png" />
+  <link rel="apple-touch-icon" href="assets/favicon.png" />
+  <link rel="shortcut icon" href="assets/favicon.png" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Fast DNS -->
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+
+  <!-- Hard overrides so the legacy 2D ship never shows and cursor is normal -->
+  <style>
+    #ship{ display:none !important; }   /* hide any legacy 2D ship if present */
+    .stage{ cursor: default; }          /* use normal mouse cursor */
+  </style>
+</head>
+<body>
+  <!-- Calm starfield -->
+  <canvas id="bg-canvas" class="bg-canvas" aria-hidden="true"></canvas>
+
+  <!-- Intro / Crawl -->
+  <div class="crawl-wrapper" id="intro">
+    <section class="crawl" aria-label="Intro crawl">
+      <div class="title">Raymond Van Der Walt</div>
+      <div class="subtitle">Frontend &amp; Game Developer</div>
+      <p>
+        In a world of pixels and polygons, one developer stood out—<br />
+        merging cinematic UI with interactive gameplay.<br />
+        His journey? To bring code to life and interfaces to the battlefield.
+      </p>
+      <p>
+        This is not just a portfolio.<br />
+        It’s a mission.<br />
+        Engage. Explore. Interact.
+      </p>
+    </section>
+
+    <button id="start-button" type="button" aria-label="Enter the mission">
+      Enter Mission
+    </button>
+  </div>
+
+  <!-- Warp overlay -->
+  <div id="warp" class="warp" hidden></div>
+
+  <!-- Stage -->
+  <div id="stage" class="stage" hidden>
+    <!-- 3D ship renders BEHIND planets -->
+    <canvas id="ship3d" class="ship3d-canvas" aria-hidden="true"></canvas>
+    <!-- Planets/labels canvas sits above the ship -->
+    <canvas id="fps-canvas" aria-label="Interactive stage"></canvas>
+
+    <!-- Landing overlay -->
+    <div id="landing" class="landing" hidden>
+      <div class="landing__bg" aria-hidden="true"></div>
+      <div class="landing__panel" role="dialog" aria-modal="true" aria-labelledby="landing-title">
+        <button class="landing__close" type="button">Back to orbit</button>
+        <h2 id="landing-title"></h2>
+        <div id="landing-body"></div>
+      </div>
+    </div>
+
+    <!-- SFX -->
+    <audio id="sfx-shoot" src="assets/audio/shoot.mp3" preload="auto"></audio>
+  </div>
+
+  <!-- Site data: Contact + Case Studies + Profile + Years -->
+  <script id="site-data" type="application/json">
+  {
+    "skillsPlanet": { "name": "Orionis-IX", "label": "My Skills", "palette": "aqua", "size": 54 },
+
+    "skills": [
+      { "group": "Frontend", "items": [
+        { "name": "React", "level": 90 },
+        { "name": "TypeScript", "level": 85 },
+        { "name": "CSS / Tailwind", "level": 92 },
+        { "name": "Canvas / WebGL", "level": 88 }
+      ]},
+      { "group": "Game / 3D", "items": [
+        { "name": "Unreal Engine 5 (Blueprints)", "level": 86 },
+        { "name": "UE5 UI (UMG/CommonUI)", "level": 88 },
+        { "name": "Shaders / Materials", "level": 70 }
+      ]},
+      { "group": "UX / Motion", "items": [
+        { "name": "Cinematic UI / HUD", "level": 92 },
+        { "name": "Microinteractions", "level": 90 },
+        { "name": "Accessibility (a11y)", "level": 78 }
+      ]},
+      { "group": "Tooling", "items": [
+        { "name": "Node / Vite", "level": 80 },
+        { "name": "Build & Perf", "level": 82 },
+        { "name": "Automations", "level": 76 }
+      ]}
+    ],
+
+    "contact": {
+      "email": "raymond.vdwalt@gmail.com",
+      "location": "South Africa",
+      "availability": "Open to remote/onsite opportunities",
+      "formEndpoint": ""
+    },
+
+    "caseStudies": [
+      {
+        "id": "case-a",
+        "title": "They Fear The Light — Mission HUD",
+        "summary": "Cinematic objective flow, markers, and context-sensitive tips using UE5 + CommonUI.",
+        "role": "UI/UX, UE5 Blueprints",
+        "stack": ["UE5","Blueprints","CommonUI","Motion"],
+        "bullets": [
+          "Objective/state machine driving HUD states",
+          "Marker system with diegetic feedback and distance gating",
+          "All animations/materials kept inside a frame-time budget"
+        ],
+        "links": { "demo": "#", "repo": "#" },
+        "hero": "assets/images/case-a-hero.jpg"
+      },
+      {
+        "id": "case-b",
+        "title": "Will Tool MVP — Dynamic PDF",
+        "summary": "Interactive form flows that output legally formatted documents.",
+        "role": "Frontend Lead",
+        "stack": ["React","TypeScript","PDF Tooling","Design Systems"],
+        "bullets": [
+          "Schema-driven UI with validation",
+          "PDF assembly pipeline and integrations",
+          "Analytics instrumentation for funnel drop-off"
+        ],
+        "links": { "demo": "#", "repo": "#" },
+        "hero": "assets/images/case-b-hero.jpg"
+      }
+    ],
+
+    "links": {
+      "resume": "assets/docs/Raymond-Van-Der-Walt-Resume.pdf",
+      "github": "https://github.com/",
+      "linkedin": "https://www.linkedin.com/",
+      "email": "raymond.vdwalt@gmail.com"
+    },
+
+    "profile": "assets/images/profile.jpg",
+    "years": 8
+  }
+  </script>
+
+  <!-- Make comments inside #site-data safe for JSON.parse (keeps https:// links intact) -->
+  <script>
+    (function () {
+      var el = document.getElementById('site-data');
+      if (!el) return;
+      var raw = el.textContent || "";
+      // strip block comments /* ... */
+      var clean = raw.replace(/\/\*[\s\S]*?\*\//g, "");
+      // strip line comments that start a line or follow whitespace (not URLs like https://)
+      clean = clean.replace(/(^|\s)\/\/[^\n\r]*/g, "$1");
+      el.textContent = clean;
+    })();
+  </script>
+
+  <!-- Structured data -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"Person",
+    "name":"Raymond Van Der Walt",
+    "jobTitle":"Frontend & Game Developer",
+    "email":"mailto:raymond.vdwalt@gmail.com",
+    "image":"assets/og-cover.png",
+    "knowsAbout":["Frontend Development","Game UI","Unreal Engine","React","WebGL","UX"],
+    "address":{"@type":"PostalAddress","addressCountry":"ZA"}
+  }
+  </script>
+
+  <!-- Runtime flags consumed by main.js -->
+  <script>
+    window.APP_OPTS = {
+      followMouse: true,
+      showCrosshair: false,
+      angleOffsetDeg: 0,
+      disable2DShip: true,
+      autoStartIntroMs: 22000
+    };
+  </script>
+
+  <!-- 3D ship (CDN build is fine for Live Server) -->
+  <script src="https://unpkg.com/three@0.157.0/build/three.min.js" defer></script>
+  <script src="js/ship3d.js" defer></script>
+
+  <!-- Main logic -->
+  <script src="js/main.js" defer></script>
+
+  <noscript>
+    <p style="color:#fff; position:fixed; inset:0; display:grid; place-items:center; background:#000;">
+      This site needs JavaScript enabled.
+    </p>
+  </noscript>
+</body>
+</html>

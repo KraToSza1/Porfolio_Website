@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0b12"></stop>
+      <stop offset="1" stop-color="#000000"></stop>
+    </linearGradient>
+    <radialGradient id="pulse" cx="70%" cy="30%" r="60%">
+      <stop offset="0" stop-color="#142033"></stop>
+      <stop offset="1" stop-color="transparent"></stop>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"></rect>
+  <circle cx="900" cy="160" r="260" fill="url(#pulse)" opacity="0.8"></circle>
+  <g transform="translate(80,120)">
+    <text x="0" y="0" fill="#ffe81f" font-size="76" font-weight="900">Raymond Van Der Walt</text>
+    <text x="0" y="66" fill="#c9d7ff" font-size="30" font-weight="600">Frontend &amp; Game Developer</text>
+    <rect x="0" y="120" width="640" height="4" fill="#243153"></rect>
+    <text x="0" y="190" fill="#e7ecff" font-size="28">Star-crawl ✦ FPS-style interactive portfolio</text>
+    <text x="0" y="235" fill="#a9b6d6" font-size="22">UE5 UI/UX · React · Canvas/WebGL · CSS 3D · CommonUI</text>
+  </g>
+</svg>
