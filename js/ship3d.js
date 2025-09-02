@@ -1,7 +1,6 @@
 // js/ship3d.js
 // Globals: window.initShip3D, window.updateShip3D, window.destroyShip3D
-// Style: "Icon Fighter" — matches the vector icon (teal tip/canopy, red wings,
-// grey hull + side arms, little pods). WebGL1-safe, three r0.157+.
+// Style: "Icon Fighter" — teal tip/canopy, red wings, grey hull. WebGL1-safe (three r0.157+).
 
 (function () {
   "use strict";
@@ -16,8 +15,14 @@
     grd.addColorStop(0.5, "rgba(94,242,255,1)");
     grd.addColorStop(1, "rgba(94,242,255,0)");
     g.fillStyle = grd; g.fillRect(0, 0, w, h);
+
     const tex = new THREE.CanvasTexture(c);
+    tex.minFilter = THREE.LinearFilter;
     tex.magFilter = THREE.LinearFilter;
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+
     return new THREE.SpriteMaterial({
       map: tex, color: hex, transparent: true,
       depthWrite: false, blending: THREE.AdditiveBlending
@@ -45,37 +50,86 @@
       this._spawnTimer = 0;
       this.engineOn = true;
       this._engineManual = undefined;
+      this._paused = false;
 
       const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (reduce || !window.THREE) return;
 
       // ---- renderer (robust if canvas already has a 2D ctx) -----------------
-      const makeRendererOn = (canvas) => new THREE.WebGLRenderer({
-        canvas, antialias: true, alpha: true, premultipliedAlpha: false
-      });
-      let renderer = null;
-      try { renderer = makeRendererOn(this.canvas); renderer.getContext(); } catch { renderer = null; }
-      if (!renderer) {
-        const alt = document.createElement("canvas");
-        alt.className = this.hostCanvas.className || "ship3d-canvas";
-        Object.assign(alt.style, {
-          position: "absolute", inset: "0", width: "100%", height: "100%",
-          display: "block", pointerEvents: "none", background: "transparent",
-          zIndex: (this.hostCanvas.style.zIndex || "1")
+      const makeRendererOn = (canvas) => {
+        // Prefer explicit WebGL1 context (WebGL2 will still work if present)
+        const ctx = canvas.getContext("webgl", {
+          alpha: true, antialias: true, premultipliedAlpha: false,
+          preserveDrawingBuffer: false, powerPreference: "high-performance"
+        }) || canvas.getContext("experimental-webgl");
+        if (!ctx) throw new Error("Ship3D: WebGL not available");
+        return new THREE.WebGLRenderer({
+          canvas, context: ctx, antialias: true, alpha: true, premultipliedAlpha: false
         });
-        this.hostCanvas.parentNode.insertBefore(alt, this.hostCanvas);
-        this.canvas = alt;
-        renderer = makeRendererOn(this.canvas);
+      };
+
+      let renderer = null;
+      try { renderer = makeRendererOn(this.canvas); renderer.getContext(); }
+      catch {
+        // try a sibling overlay canvas if the provided one is "busy"
+        try {
+          const alt = document.createElement("canvas");
+          alt.className = this.hostCanvas.className || "ship3d-canvas";
+          Object.assign(alt.style, {
+            position: "absolute", inset: "0", width: "100%", height: "100%",
+            display: "block", pointerEvents: "none", background: "transparent",
+            zIndex: (this.hostCanvas.style.zIndex || "1")
+          });
+          this.hostCanvas.parentNode.insertBefore(alt, this.hostCanvas);
+          this.canvas = alt;
+          renderer = makeRendererOn(this.canvas);
+        } catch (e2) {
+          console.warn("[Ship3D] WebGL init failed:", e2);
+          return; // give up gracefully
+        }
       }
       this.renderer = renderer;
-      this.renderer.setPixelRatio(Math.max(1, window.devicePixelRatio || 1));
+
+      // color management (r0.157+)
+      this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+      this.renderer.toneMapping = THREE.NoToneMapping;
+      this.renderer.setClearColor(0x000000, 0);
       this.renderer.setClearAlpha(0);
+
+      // DPI / device pixel ratio helpers
+      this._setPixelRatio = () => {
+        const pr = Math.max(1, Math.min(2.5, window.devicePixelRatio || 1)); // clamp DPR for perf
+        this.renderer.setPixelRatio(pr);
+      };
+      this._setPixelRatio();
 
       // ---- scene / camera (pixel ortho with Y-down) -------------------------
       this.scene = new THREE.Scene();
       this.camera = new THREE.OrthographicCamera();
+
+      // Use visualViewport (iOS address bar aware)
+      this._sizeFromVV = () => {
+        const vv = window.visualViewport;
+        return {
+          w: Math.floor(vv?.width || window.innerWidth),
+          h: Math.floor(vv?.height || window.innerHeight)
+        };
+      };
+
+      this._onResize = () => this.resize();
+      addEventListener("resize", this._onResize, { passive: true });
+      if (window.visualViewport) {
+        this._onVV = () => this.resize();
+        window.visualViewport.addEventListener("resize", this._onVV, { passive: true });
+      }
       this.resize();
-      addEventListener("resize", () => this.resize(), { passive: true });
+
+      // listen for DPI changes even without a resize
+      try {
+        this._onDppx = () => this._setPixelRatio();
+        this._dppxMQ = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+        this._dppxMQ.addEventListener?.("change", this._onDppx);
+      } catch {}
 
       // ---- palette (pulls from icon) ----------------------------------------
       const PALETTE = {
@@ -109,44 +163,50 @@
         metalness: 0, roughness: 1, flatShading: true
       });
 
+      // ---- shared geometries (perf) -----------------------------------------
+      const G = {
+        body:      new THREE.BoxGeometry(84, 20, 18),
+        arm:       new THREE.BoxGeometry(58, 10, 10),
+        wing:      new THREE.BoxGeometry(52, 8, 4),
+        wingCore:  new THREE.BoxGeometry(26, 10, 6),
+        pod:       new THREE.CylinderGeometry(4, 4, 12, 16),
+        nozzle:    new THREE.CylinderGeometry(7, 10, 10, 20),
+        tip:       new THREE.ConeGeometry(12, 24, 6),
+        flame:     new THREE.ConeGeometry(11, 28, 12),
+        canopy:    new THREE.OctahedronGeometry(10),
+        dot:       new THREE.SphereGeometry(1.8, 10, 10),
+      };
+
       // ---- build the ship (faces +X) ----------------------------------------
       this.ship = new THREE.Group();
 
-      // Central fuselage (slim, long, like the icon)
-      const body = new THREE.Mesh(new THREE.BoxGeometry(84, 20, 18), hullMat);
+      const body = new THREE.Mesh(G.body, hullMat);
       body.position.set(-4, 0, 0);
 
-      // Nose tip (teal)
-      const tip = new THREE.Mesh(new THREE.ConeGeometry(12, 24, 6), tealMat);
+      const tip = new THREE.Mesh(G.tip, tealMat);
       tip.rotation.z = -Math.PI * 0.5;
       tip.position.set(52, 0, 0);
 
-      // Canopy “diamond”
-      const canopy = new THREE.Mesh(new THREE.OctahedronGeometry(10), canopyMat);
+      const canopy = new THREE.Mesh(G.canopy, canopyMat);
       canopy.scale.set(1.0, 0.75, 1.2);
       canopy.position.set(14, 0, 10);
 
-      // Side arms (dark grey “forks” from icon)
-      const armL = new THREE.Mesh(new THREE.BoxGeometry(58, 10, 10), darkMat);
+      const armL = new THREE.Mesh(G.arm, darkMat);
       armL.position.set(-6, -28, 0);
       const armR = armL.clone(); armR.position.y = 28;
 
-      // Red wing panels (triangular look via thin boxes rotated)
-      const wingL = new THREE.Mesh(new THREE.BoxGeometry(52, 8, 4), redMat);
+      const wingL = new THREE.Mesh(G.wing, redMat);
       wingL.position.set(0, -22, 2); wingL.rotation.z = THREE.MathUtils.degToRad(-12);
       const wingR = wingL.clone(); wingR.position.y = 22; wingR.rotation.z = THREE.MathUtils.degToRad(12);
 
-      // Wing inner grey blocks (like the icon’s inner sections)
-      const wingCoreL = new THREE.Mesh(new THREE.BoxGeometry(26, 10, 6), hullMat);
+      const wingCoreL = new THREE.Mesh(G.wingCore, hullMat);
       wingCoreL.position.set(-10, -22, 2);
       const wingCoreR = wingCoreL.clone(); wingCoreR.position.y = 22;
 
-      // Little pods hanging under the arms
-      const podL = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 12, 16), darkMat);
+      const podL = new THREE.Mesh(G.pod, darkMat);
       podL.rotation.z = Math.PI * 0.5; podL.position.set(-20, -34, -6);
       const podR = podL.clone(); podR.position.y = 34;
 
-      // Cyan slits on spine (sprites for soft glow)
       const slitGroup = new THREE.Group();
       const sMat = glowSpriteMat(PALETTE.tealBright);
       for (let i = 0; i < 6; i++) {
@@ -156,23 +216,20 @@
         slitGroup.add(s);
       }
 
-      // Back nozzle + cyan flame
-      const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(7, 10, 10, 20), darkMat);
+      const nozzle = new THREE.Mesh(G.nozzle, darkMat);
       nozzle.rotation.z = Math.PI * 0.5; nozzle.position.set(-58, 0, 0);
 
-      const flame = new THREE.Mesh(new THREE.ConeGeometry(11, 28, 12), engineMat);
+      const flame = new THREE.Mesh(G.flame, engineMat);
       flame.rotation.z = -Math.PI * 0.5; flame.position.set(-72, 0, 0);
       this.flame = flame;
 
-      // Tiny teal dots (thruster “dashes” like the icon) – optional
       const dots = new THREE.Group();
       for (let i=0;i<4;i++){
-        const p = new THREE.Mesh(new THREE.SphereGeometry(1.8, 10, 10), glowMat);
+        const p = new THREE.Mesh(G.dot, glowMat);
         p.position.set(-30 - i*6, (i%2?6:-6), -6);
         dots.add(p);
       }
 
-      // Assemble
       this.ship.add(
         body, tip, canopy,
         armL, armR, wingL, wingR, wingCoreL, wingCoreR,
@@ -180,14 +237,25 @@
       );
       this.scene.add(this.ship);
 
-      // ---- trail sprites (cyan) ---------------------------------------------
+      // ---- trail sprites (cyan) w/ material pool ----------------------------
       this.trailGroup = new THREE.Group();
       this.scene.add(this.trailGroup);
       this.trails = [];
-      this.trailMaterial = new THREE.SpriteMaterial({
+      this._trailCap = 64;
+
+      // pool of sprites w/ individual materials so opacity can vary independently
+      this._trailPool = [];
+      const baseTrailMat = new THREE.SpriteMaterial({
         color: PALETTE.tealBright, transparent: true, opacity: 0.5,
         depthWrite: false, blending: THREE.AdditiveBlending
       });
+      const allocTrailSprite = () => {
+        // clone to get an independent material instance (independent opacity)
+        const s = new THREE.Sprite(baseTrailMat.clone());
+        s.renderOrder = 2;
+        return s;
+      };
+      for (let i = 0; i < this._trailCap; i++) this._trailPool.push(allocTrailSprite());
 
       // ---- lights -----------------------------------------------------------
       this.scene.add(new THREE.AmbientLight(0xffffff, 0.85));
@@ -195,7 +263,23 @@
       key.position.set(220, 140, 240);
       this.scene.add(key);
 
+      // context loss / restore
       this.canvas.addEventListener("webglcontextlost", (e) => e.preventDefault(), false);
+      this.canvas.addEventListener("webglcontextrestored", () => {
+        this._setPixelRatio();
+        this.resize();
+        try { this.renderer.compile(this.scene, this.camera); } catch {}
+      }, false);
+
+      // pause on hidden tab (saves battery)
+      this._onVis = () => {
+        this._paused = document.visibilityState === "hidden";
+        if (!this._paused && !this._raf) this.loop();
+      };
+      document.addEventListener("visibilitychange", this._onVis, { passive: true });
+
+      // small warm-up compile to avoid first-flight hitch
+      try { this.renderer.compile(this.scene, this.camera); } catch {}
 
       this.enabled = true;
       this.loop();
@@ -203,10 +287,11 @@
 
     resize() {
       if (!this.renderer) return;
-      const w = Math.floor(window.innerWidth);
-      const h = Math.floor(window.innerHeight);
+      const { w, h } = this._sizeFromVV();
       this.w = w; this.h = h;
+      this._setPixelRatio();
       this.renderer.setSize(w, h, false);
+
       // Ortho pixel space, top-left origin, Y down
       this.camera.left = 0; this.camera.right = w;
       this.camera.top = 0;  this.camera.bottom = h;
@@ -220,8 +305,10 @@
     set(x, y, angleDeg, scale) {
       if (!this.enabled) return;
 
-      const px = (x <= 1 && y <= 1) ? (x * (this.w || window.innerWidth)) : x;
-      const py = (x <= 1 && y <= 1) ? (y * (this.h || window.innerHeight)) : y;
+      const norm = typeof x === "number" && typeof y === "number" &&
+                   x >= 0 && x <= 1 && y >= 0 && y <= 1;
+      const px = norm ? (x * (this.w || window.innerWidth)) : x;
+      const py = norm ? (y * (this.h || window.innerHeight)) : y;
 
       if (this._prev.x != null) {
         const moving = Math.hypot(px - this._prev.x, py - this._prev.y) > 0.6;
@@ -249,12 +336,32 @@
     setEngine(on) { this.engineOn = !!on; this._engineManual = true; }
 
     _spawnPuff() {
-      const s = new THREE.Sprite(this.trailMaterial.clone());
+      // reuse from pool when possible
+      let s = this._trailPool.pop();
+      if (!s) {
+        // recycle the oldest if we're beyond cap
+        const oldest = this.trails.shift();
+        if (oldest) {
+          this.trailGroup.remove(oldest.s);
+          s = oldest.s; // reuse sprite & material
+        } else {
+          // absolute fallback (shouldn't hit often)
+          s = new THREE.Sprite();
+        }
+      }
+
+      if (this.trails.length >= this._trailCap && this.trails[0]) {
+        const oldest = this.trails.shift();
+        this.trailGroup.remove(oldest.s);
+        this._trailPool.push(oldest.s);
+      }
+
       const dir = new THREE.Vector2(Math.cos(this.ship.rotation.z), Math.sin(this.ship.rotation.z));
       const dist = 34;
       s.position.set(this.ship.position.x - dir.x * dist, this.ship.position.y - dir.y * dist, 0);
       const base = 10 + Math.random() * 7;
       s.scale.set(base, base, 1);
+      s.material.opacity = 0.5;
       this.trailGroup.add(s);
       this.trails.push({
         s, life: 0,
@@ -271,7 +378,8 @@
         const t = p.life / p.max;
         if (t >= 1) {
           this.trailGroup.remove(p.s);
-          p.s.material.dispose(); p.s.geometry?.dispose?.();
+          // return to pool instead of disposing
+          this._trailPool.push(p.s);
           this.trails.splice(i, 1);
           continue;
         }
@@ -285,6 +393,8 @@
 
     loop() {
       if (!this.enabled) return;
+      if (this._paused) { this._raf = null; return; } // stop scheduling while hidden
+
       this._raf = requestAnimationFrame(() => this.loop());
 
       const now = performance.now();
@@ -294,6 +404,8 @@
       // gentle wobble + bank (for “alive” feel)
       const wobX = Math.sin(this._time * 1.3) * 0.02;
       const wobY = Math.cos(this._time * 1.1) * 0.02;
+      // decay the perceived turn velocity slowly so banking returns to neutral
+      this._turnVel *= 0.92;
       const bankTarget = THREE.MathUtils.clamp(-this._turnVel * 3.2, -0.5, 0.5);
       this._bank = THREE.MathUtils.lerp(this._bank, bankTarget, 0.15);
       this.ship.rotation.x = wobX + this._bank;
@@ -320,11 +432,50 @@
 
     destroy() {
       if (this._raf) cancelAnimationFrame(this._raf);
-      try { this.renderer.dispose(); } catch {}
+
+      // remove listeners
+      removeEventListener("resize", this._onResize);
+      this._dppxMQ?.removeEventListener?.("change", this._onDppx);
+      if (this._onVV) window.visualViewport?.removeEventListener("resize", this._onVV);
+      document.removeEventListener("visibilitychange", this._onVis);
+
+      // cleanup trails in scene
+      for (let i = this.trails.length - 1; i >= 0; i--) {
+        const p = this.trails[i];
+        this.trailGroup.remove(p.s);
+      }
+      this.trails.length = 0;
+
+      // dispose scene graph (avoid double-dispose with sets)
+      const disposedMaterials = new Set();
+      const disposedGeoms = new Set();
+      const disposedMaps = new Set();
+
       this.scene.traverse(obj => {
-        if (obj.isMesh) { obj.geometry?.dispose?.(); obj.material?.dispose?.(); }
-        if (obj.isSprite){ obj.material?.dispose?.(); obj.geometry?.dispose?.(); }
+        const mats = obj.isMesh || obj.isSprite
+          ? (Array.isArray(obj.material) ? obj.material : [obj.material])
+          : [];
+        mats.forEach(m => {
+          if (!m) return;
+          if (m.map && !disposedMaps.has(m.map)) { m.map.dispose?.(); disposedMaps.add(m.map); }
+          if (m.emissiveMap && !disposedMaps.has(m.emissiveMap)) { m.emissiveMap.dispose?.(); disposedMaps.add(m.emissiveMap); }
+          if (!disposedMaterials.has(m)) { m.dispose?.(); disposedMaterials.add(m); }
+        });
+        if (obj.geometry && !disposedGeoms.has(obj.geometry)) { obj.geometry.dispose?.(); disposedGeoms.add(obj.geometry); }
       });
+
+      // also dispose pooled trail materials/textures
+      for (const s of this._trailPool) {
+        try {
+          if (s.material?.map && !disposedMaps.has(s.material.map)) { s.material.map.dispose?.(); disposedMaps.add(s.material.map); }
+          s.material?.dispose?.();
+        } catch {}
+      }
+      this._trailPool.length = 0;
+
+      try { this.renderer.dispose(); } catch {}
+
+      this.enabled = false;
     }
   }
 
@@ -332,7 +483,10 @@
   let instance = null;
 
   window.initShip3D = function (canvasOrId) {
-    try { instance = new Ship3D(canvasOrId); }
+    try {
+      if (instance) { instance.destroy(); instance = null; }
+      instance = new Ship3D(canvasOrId);
+    }
     catch (e) { console.warn("[Ship3D] init failed:", e); instance = null; }
   };
 

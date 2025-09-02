@@ -1,68 +1,142 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-ZA">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Single, correct viewport incl. safe areas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
-  <title>Raymond Van Der Walt - Interactive Portfolio</title>
-  <link rel="canonical" href="/" />
+  <title>Raymond van der Walt - Interactive Portfolio</title>
+  <!-- Use an absolute canonical URL -->
+  <link rel="canonical" href="https://rayvdw.com/" />
 
-  <meta name="description" content="Raymond Van Der Walt — Frontend & Game Developer. Cinematic UI, WebGL/Canvas, UE5 widgets, performance-first web experiences." />
+  <!-- Preconnects FIRST for max effect -->
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="preconnect" href="https://www.youtube.com" crossorigin>
+  <link rel="preconnect" href="https://i.ytimg.com" crossorigin>
+  <link rel="dns-prefetch" href="//unpkg.com">
+  <link rel="dns-prefetch" href="//www.youtube.com">
+  <link rel="dns-prefetch" href="//i.ytimg.com">
+
+  <meta name="description" content="Raymond Van der Walt — Frontend & Game Developer. Cinematic UI, WebGL/Canvas, UE5 widgets, performance-first web experiences." />
   <meta name="theme-color" content="#000000" />
   <meta name="color-scheme" content="dark" />
   <meta name="robots" content="index,follow" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
 
   <!-- Open Graph -->
-  <meta property="og:title" content="Raymond Van Der Walt - Interactive Portfolio" />
+  <meta property="og:title" content="Raymond Van der Walt - Interactive Portfolio" />
   <meta property="og:description" content="Cinematic UI + interactive gameplay. Engage. Explore. Interact." />
   <meta property="og:type" content="website" />
-  <!-- moved from assets/images/... to assets/... to avoid 404 -->
-  <meta property="og:image" content="assets/og-cover.png" />
+  <meta property="og:image" content="https://rayvdw.com/assets/og-cover.png" />
   <meta property="og:locale" content="en_ZA" />
+  <meta property="og:url" content="https://rayvdw.com/" />
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Raymond Van Der Walt - Interactive Portfolio" />
+  <meta name="twitter:title" content="Raymond Van der Walt - Interactive Portfolio" />
   <meta name="twitter:description" content="Cinematic UI + interactive gameplay. Engage. Explore. Interact." />
-  <!-- moved from assets/images/... to assets/... to avoid 404 -->
-  <meta name="twitter:image" content="assets/og-cover.png" />
+  <meta name="twitter:image" content="https://rayvdw.com/assets/og-cover.png" />
 
-  <!-- Icons (avoid 404s) -->
-  <!-- moved from assets/images/... to assets/... -->
-  <link rel="icon" href="assets/favicon.png" />
-  <link rel="apple-touch-icon" href="assets/favicon.png" />
+  <!-- Icons (with sizes for better hints) -->
+  <link rel="icon" type="image/png" href="assets/favicon.png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="assets/favicon.png" sizes="180x180" />
   <link rel="shortcut icon" href="assets/favicon.png" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css" fetchpriority="high" />
 
-  <!-- Fast DNS -->
-  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <!-- Preload frequently used images (optional; safe if missing) -->
+  <link rel="preload" as="image" href="assets/images/profile.png" fetchpriority="high">
+  <link rel="preload" as="image" href="assets/images/station.png">
 
-  <!-- Hard overrides so the legacy 2D ship never shows and cursor is normal -->
+  <!-- Preload the StarJedi OUTLINE font you actually have -->
+  <link rel="preload" as="font" type="font/ttf" href="assets/fonts/starboba/starjedioutline.ttf" crossorigin>
+
+  <!-- Hard overrides so the legacy 2D ship never shows and cursor is normal + title safety -->
   <style>
     #ship{ display:none !important; }   /* hide any legacy 2D ship if present */
     .stage{ cursor: default; }          /* use normal mouse cursor */
+
+    /* Title words – keep StarJedi everywhere; style “van” as small-caps */
+    .title .word{ display:inline-block; margin:0 .06em; }
+    .title .word--van{
+      font-family: inherit;          /* stay in StarJedi */
+      font-variant: small-caps;      /* faux lowercase vibe */
+      text-transform: lowercase;
+      font-size: .85em;              /* a touch smaller */
+      letter-spacing: .14em;
+      line-height: 1;
+      vertical-align: .02em;
+    }
+    .title{ padding-inline: .25em; }
+    .crawl-wrapper{
+      padding-left:  max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+    }
+    @media (max-width: 520px){ .crawl{ padding-inline: clamp(20px, 6vw, 28px); } }
+
+    /* --- Safety overrides: make portrait smaller on phones (works even if CSS not patched yet) --- */
+    @media (max-width: 820px){
+      .about--split .about__media{ width: clamp(200px, 58vw, 360px) !important; }
+      .about--split .about__text{ text-align: left; padding-right: 0; }
+    }
+    @media (max-width: 480px){
+      .about--split .about__media{ width: clamp(170px, 52vw, 280px) !important; }
+      .portrait-neo__img{ inset: 6px; }
+      html, body{ height:auto; min-height:100%; }
+      body{ overflow:auto; } /* prevents “cut off” feeling on tiny phones */
+    }
+
+    /* Optional: low-end CSS trim if JS adds .low-end to <html> */
+    .low-end .portrait-fade{ -webkit-backdrop-filter:none !important; backdrop-filter:none !important; opacity:.4; }
+    .low-end .about__avatar{ animation:none !important; box-shadow: 0 0 0 2px rgba(158,219,255,.18) inset; }
+    .low-end .skill__fill{ animation:none !important; }
   </style>
 </head>
 <body>
   <!-- Calm starfield -->
-  <canvas id="bg-canvas" class="bg-canvas" aria-hidden="true"></canvas>
+  <canvas id="bg-canvas" class="bg-canvas" aria-hidden="true" width="1920" height="1080"></canvas>
 
   <!-- Intro / Crawl -->
   <div class="crawl-wrapper" id="intro">
     <section class="crawl" aria-label="Intro crawl">
-      <div class="title">Raymond Van Der Walt</div>
+      <h1 class="title" aria-label="Raymond van der Walt">
+        <span class="word">Raymond</span>
+        <span class="word word--van"><span class="v-lc">V</span>an</span>
+        <span class="word">der</span>
+        <span class="word">Walt</span>
+      </h1>
+
       <div class="subtitle">Frontend &amp; Game Developer</div>
-      <p>
-        In a world of pixels and polygons, one developer stood out—<br />
-        merging cinematic UI with interactive gameplay.<br />
-        His journey? To bring code to life and interfaces to the battlefield.
+
+      <p class="whisper">
+        In a world of pixels and polygons, one developer stood out,
+        merging cinematic UI with interactive gameplay.
       </p>
+
       <p>
-        This is not just a portfolio.<br />
-        It’s a mission.<br />
-        Engage. Explore. Interact.
+        You’re about to enter a small galaxy of projects: planets of code, rings of
+        micro-interactions, and a few friendly asteroids of experimentation.
+      </p>
+
+      <p>
+        <span class="callout">Mission Objective:</span> design interfaces that
+        feel incredible, run fast, and speak the same language as the game state.
+      </p>
+
+      <p>
+        Weapons online: React, TypeScript, UE5, Canvas/WebGL.
+        Shields: accessibility, performance budgets, and design systems.
+      </p>
+
+      <p class="whisper">
+        Telemetry suggests multiple points of interest <em>About</em>, <em>Projects</em>,
+        <em>Skills</em>, <em>Certifications</em> and <em>Contact</em>. Choose a destination. I’ll handle the jump.
+      </p>
+
+      <p>
+        This is not just a portfolio. It’s a mission.
+        <br />Engage. Explore. Interact.
       </p>
     </section>
 
@@ -71,31 +145,34 @@
     </button>
   </div>
 
+  <!-- Background music: 'preload="none"' keeps initial load light -->
+  <audio id="bg-music" src="assets/audio/RideTheWind.mp3" preload="none" loop></audio>
+
   <!-- Warp overlay -->
   <div id="warp" class="warp" hidden></div>
 
   <!-- Stage -->
   <div id="stage" class="stage" hidden>
     <!-- 3D ship renders BEHIND planets -->
-    <canvas id="ship3d" class="ship3d-canvas" aria-hidden="true"></canvas>
+    <canvas id="ship3d" class="ship3d-canvas" aria-hidden="true" width="1920" height="1080"></canvas>
     <!-- Planets/labels canvas sits above the ship -->
-    <canvas id="fps-canvas" aria-label="Interactive stage"></canvas>
+    <canvas id="fps-canvas" aria-label="Interactive stage" width="1920" height="1080"></canvas>
 
     <!-- Landing overlay -->
     <div id="landing" class="landing" hidden>
       <div class="landing__bg" aria-hidden="true"></div>
       <div class="landing__panel" role="dialog" aria-modal="true" aria-labelledby="landing-title">
-        <button class="landing__close" type="button">Back to orbit</button>
+        <button class="landing__close" type="button" aria-label="Back to orbit">Back to orbit</button>
         <h2 id="landing-title"></h2>
         <div id="landing-body"></div>
       </div>
     </div>
 
-    <!-- SFX -->
+    <!-- SFX: small, so 'auto' is fine -->
     <audio id="sfx-shoot" src="assets/audio/shoot.mp3" preload="auto"></audio>
   </div>
 
-  <!-- Site data: Contact + Case Studies + Profile + Years -->
+  <!-- Site data: everything the JS will render -->
   <script id="site-data" type="application/json">
   {
     "skillsPlanet": { "name": "Orionis-IX", "label": "My Skills", "palette": "aqua", "size": 54 },
@@ -105,23 +182,198 @@
         { "name": "React", "level": 90 },
         { "name": "TypeScript", "level": 85 },
         { "name": "CSS / Tailwind", "level": 92 },
-        { "name": "Canvas / WebGL", "level": 88 }
+        { "name": "Canvas / WebGL", "level": 88 },
+        { "name": "Next.js", "level": 72 },
+        { "name": "Framer Motion", "level": 78 }
       ]},
       { "group": "Game / 3D", "items": [
         { "name": "Unreal Engine 5 (Blueprints)", "level": 86 },
         { "name": "UE5 UI (UMG/CommonUI)", "level": 88 },
-        { "name": "Shaders / Materials", "level": 70 }
+        { "name": "Shaders / Materials", "level": 70 },
+        { "name": "Enhanced Input", "level": 75 }
       ]},
       { "group": "UX / Motion", "items": [
         { "name": "Cinematic UI / HUD", "level": 92 },
         { "name": "Microinteractions", "level": 90 },
-        { "name": "Accessibility (a11y)", "level": 78 }
+        { "name": "Accessibility (a11y)", "level": 78 },
+        { "name": "Prototyping (Figma)", "level": 65 }
       ]},
       { "group": "Tooling", "items": [
         { "name": "Node / Vite", "level": 80 },
         { "name": "Build & Perf", "level": 82 },
-        { "name": "Automations", "level": 76 }
+        { "name": "Automations", "level": 76 },
+        { "name": "Git & GitHub", "level": 85 }
       ]}
+    ],
+
+    "projects": [
+      {
+        "title": "NDA Signed Mission HUD",
+        "description": "Cinematic objective flow + markers driven by a clean state machine in UE5.",
+        "requirements": ["Blueprints", "CommonUI/UMG", "Animation Curves", "Materials", "60fps budget"],
+        "tech": ["UE5", "Blueprints", "CommonUI"],
+        "links": []
+      },
+      {
+        "title": "Will Tool MVP — Dynamic PDF Builder",
+        "description": "Schema-driven forms that output legally formatted PDFs.",
+        "requirements": ["HTML", "CSS", "JavaScript", "React", "TypeScript", "Validation", "PDF pipeline"],
+        "tech": ["React", "TypeScript", "PDF Tooling"],
+        "links": []
+      },
+      {
+        "title": "Common UI Menu Framework",
+        "description": "Reusable rotators, focus rules and input mapping with EnhancedInput.",
+        "requirements": ["UE5", "C++/Blueprints", "EnhancedInput", "CommonUI"],
+        "tech": ["UE5.6", "C++", "CommonUI"],
+        "links": []
+      },
+      {
+        "title": "Farmily (Prototype)",
+        "description": "Expo app foundations with auth/payments plan and component system.",
+        "requirements": ["React Native", "Expo", "Routing", "Theming"],
+        "tech": ["Expo", "React Native"],
+        "links": []
+      }
+    ],
+
+    "certifications": [
+      /* ===== Completed ===== */
+      {
+        "name": "React Native - The Practical Guide [2025]",
+        "issuer": "Udemy",
+        "year": "2025",
+        "link": "assets/docs/certs/React Native - The Practical Guide 2024.pdf",
+        "status": "complete",
+        "progress": 100
+      },
+      {
+        "name": "Unreal Engine 5 C++ Multiplayer CRASH COURSE",
+        "issuer": "Udemy",
+        "year": "",
+        "status": "complete",
+        "progress": 100
+      },
+      {
+        "name": "C++ Fundamentals: Game Programming For Beginners",
+        "issuer": "Udemy",
+        "year": "",
+        "status": "complete",
+        "progress": 100
+      },
+      {
+        "name": "Unreal Engine — Creating Widgets for UI",
+        "issuer": "Udemy",
+        "year": "",
+        "link": "assets/docs/certs/Unreal Engine Creating Widgets for UI.pdf",
+        "status": "complete",
+        "progress": 100
+      },
+      {
+        "name": "Unreal Engine 5 C++ — The Ultimate Game Developer Course",
+        "issuer": "Udemy",
+        "year": "",
+        "link": "assets/docs/certs/UE5 C++ The Ultimate Game Dev Course.pdf",
+        "status": "complete",
+        "progress": 100
+      },
+      {
+        "name": "Unreal Engine 5: The Complete Beginner's Course",
+        "issuer": "Udemy",
+        "year": "",
+        "status": "complete",
+        "progress": 100
+      },
+
+      /* ===== In progress ===== */
+      {
+        "name": "Learn C++ for Game Development",
+        "issuer": "Udemy",
+        "year": "2023",
+        "link": "assets/docs/certs/Learn c++ for Game Development.pdf",
+        "status": "in-progress",
+        "progress": 100
+      },
+      {
+        "name": "Unreal Engine 5 C++: Advanced Frontend UI Programming",
+        "issuer": "Udemy",
+        "year": "",
+        "status": "in-progress",
+        "progress": 37
+      },
+      {
+        "name": "Unreal Engine 5 Blueprints - The Ultimate Developer Course",
+        "issuer": "Udemy",
+        "year": "",
+        "status": "in-progress",
+        "progress": 25
+      },
+      {
+        "name": "Unreal Engine 5 Dedicated Servers with AWS and GameLift",
+        "issuer": "Udemy",
+        "year": "",
+        "status": "in-progress",
+        "progress": 27
+      },
+      {
+        "name": "Unreal Engine 5 UI Design: Advance inventory system with UE5",
+        "issuer": "Udemy",
+        "year": "",
+        "status": "in-progress",
+        "progress": 24
+      },
+      {
+        "name": "Unreal Engine: Advanced Widgets for UI",
+        "issuer": "Udemy",
+        "year": "",
+        "status": "in-progress",
+        "progress": 21
+      }
+    ],
+
+    "caseStudies": [
+      {
+        "id": "case-a",
+        "title": "NDA Signed Mission HUD",
+        "summary": "Cinematic HUD: objectives, markers, state transitions.",
+        "stack": ["UE5","Blueprints","CommonUI","Motion"],
+        "bullets": [
+          "Objective pipeline with timed beats + diegetic transitions.",
+          "Marker system with distance-gated hints and edge indicators.",
+          "Budgeted animation curves + lightweight materials (60fps+)."
+        ],
+        "hero": "assets/images/cases/Demo.png",
+        "video": { "youtube": "dQw4w9WgXcQ" }
+      },
+      {
+        "id": "case-b",
+        "title": "Will Tool MVP Dynamic PDF",
+        "summary": "Interactive form flows that output legally formatted documents.",
+        "stack": ["React","TypeScript","PDF Tooling","Design Systems"],
+        "bullets": [
+          "Schema-driven UI with validation.",
+          "PDF assembly pipeline + integrations.",
+          "Analytics instrumentation for funnel drop-off."
+        ],
+        "hero": "assets/images/cases/willtool.jpg",
+        "video": { "mp4": "assets/videos/willtool-demo.mp4", "poster": "assets/images/cases/willtool-poster.jpg" }
+      },
+      {
+        "id": "case-c",
+        "title": "UI VFX Sandbox",
+        "summary": "Shader-ish HUD flourishes and feel-testing.",
+        "stack": ["Canvas/WebGL","Shaders","Motion"],
+        "bullets": ["Additive glows","Scanlines","CRT bloom tests"],
+        "hero": "assets/images/cases/uivfx.jpg"
+      },
+      {
+        "id": "case-d",
+        "title": "Menu Motion Kit",
+        "summary": "Reusable motion primitives for game menus.",
+        "stack": ["UE5","CommonUI","Motion"],
+        "bullets": ["Enter/exit choreography","Focus/hover microfeedback","Sound hooks"],
+        "hero": "assets/images/cases/menukit.jpg"
+      }
     ],
 
     "contact": {
@@ -131,59 +383,38 @@
       "formEndpoint": ""
     },
 
-    "caseStudies": [
-      {
-        "id": "case-a",
-        "title": "They Fear The Light — Mission HUD",
-        "summary": "Cinematic objective flow, markers, and context-sensitive tips using UE5 + CommonUI.",
-        "role": "UI/UX, UE5 Blueprints",
-        "stack": ["UE5","Blueprints","CommonUI","Motion"],
-        "bullets": [
-          "Objective/state machine driving HUD states",
-          "Marker system with diegetic feedback and distance gating",
-          "All animations/materials kept inside a frame-time budget"
-        ],
-        "links": { "demo": "#", "repo": "#" },
-        "hero": "assets/images/case-a-hero.jpg"
-      },
-      {
-        "id": "case-b",
-        "title": "Will Tool MVP — Dynamic PDF",
-        "summary": "Interactive form flows that output legally formatted documents.",
-        "role": "Frontend Lead",
-        "stack": ["React","TypeScript","PDF Tooling","Design Systems"],
-        "bullets": [
-          "Schema-driven UI with validation",
-          "PDF assembly pipeline and integrations",
-          "Analytics instrumentation for funnel drop-off"
-        ],
-        "links": { "demo": "#", "repo": "#" },
-        "hero": "assets/images/case-b-hero.jpg"
-      }
-    ],
-
     "links": {
       "resume": "assets/docs/Raymond-Van-Der-Walt-Resume.pdf",
-      "github": "https://github.com/",
-      "linkedin": "https://www.linkedin.com/",
-      "email": "raymond.vdwalt@gmail.com"
+      "github": "https://github.com/KraToSza1",
+      "linkedin": "https://www.linkedin.com/in/raymond-van-der-walt-2135b41a5/",
+      "email": "Raymondvdw@gmail.com"
     },
 
-    "profile": "assets/images/profile.jpg",
-    "years": 8
+    "profile": "assets/images/profile.png",
+    "years": 4,
+
+    "ui": {
+      "showLinksInAbout": true,
+      "aboutLinksHeading": "Links"
+    },
+
+    "station": {
+      "label": "RVDW",
+      "sprite": "assets/images/station.png",
+      "px": 22,
+      "py": 58
+    }
   }
   </script>
 
-  <!-- Make comments inside #site-data safe for JSON.parse (keeps https:// links intact) -->
+  <!-- (Optional) comment scrubber if you keep comments inside #site-data) -->
   <script>
     (function () {
       var el = document.getElementById('site-data');
       if (!el) return;
       var raw = el.textContent || "";
-      // strip block comments /* ... */
-      var clean = raw.replace(/\/\*[\s\S]*?\*\//g, "");
-      // strip line comments that start a line or follow whitespace (not URLs like https://)
-      clean = clean.replace(/(^|\s)\/\/[^\n\r]*/g, "$1");
+      var clean = raw.replace(/\/\*[\s\S]*?\*\//g, "");   /* strip block comments */
+      clean = clean.replace(/(^|\s)\/\/[^\n\r]*/g, "$1"); /* strip line comments (not URLs) */
       el.textContent = clean;
     })();
   </script>
@@ -193,11 +424,11 @@
   {
     "@context":"https://schema.org",
     "@type":"Person",
-    "name":"Raymond Van Der Walt",
+    "name":"Raymond Van der Walt",
     "jobTitle":"Frontend & Game Developer",
     "email":"mailto:raymond.vdwalt@gmail.com",
-    "image":"assets/og-cover.png",
-    "knowsAbout":["Frontend Development","Game UI","Unreal Engine","React","WebGL","UX"],
+    "image":"https://rayvdw.com/assets/og-cover.png",
+    "knowsAbout":["Frontend Development","Game UI","Unreal Engine","React","WebGL","UX","TypeScript","Canvas","Motion Design","Accessibility"],
     "address":{"@type":"PostalAddress","addressCountry":"ZA"}
   }
   </script>
@@ -209,19 +440,30 @@
       showCrosshair: false,
       angleOffsetDeg: 0,
       disable2DShip: true,
-      autoStartIntroMs: 22000
+      autoStartIntroMs: 28000
     };
   </script>
 
-  <!-- 3D ship (CDN build is fine for Live Server) -->
-  <script src="https://unpkg.com/three@0.157.0/build/three.min.js" defer></script>
+  <!-- 3D ship (keep for now; we’ll lazy-load Three.js in ship3d.js next) -->
   <script src="js/ship3d.js" defer></script>
+
+  <!-- Service Worker (PWA / PRPL) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        const swUrl = new URL('sw.js', location.href);
+        navigator.serviceWorker.register(swUrl, { scope: '/' })
+          .then(r => console.log('[SW] registered:', r.scope))
+          .catch(err => console.warn('[SW] failed:', err));
+      });
+    }
+  </script>
 
   <!-- Main logic -->
   <script src="js/main.js" defer></script>
 
   <noscript>
-    <p style="color:#fff; position:fixed; inset:0; display:grid; place-items:center; background:#000;">
+    <p style="color:#fff; position:fixed; inset:0; display:grid; place-items:center; background:#000; margin:0;">
       This site needs JavaScript enabled.
     </p>
   </noscript>

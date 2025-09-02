@@ -14,11 +14,16 @@
   --warp-tint-1: rgba(120,215,255,.14);
   --warp-tint-2: rgba(54,130,255,.10);
 
-  /* readable crawl speed */
-  --crawl-duration:90s;
+  /* readable crawl speed (tweak this) */
+  --crawl-duration:45s;
 
   /* layout helpers */
   --panel-max-w: 900px;
+
+  /* Responsive/safe-area helpers (updated by JS) */
+  --vh: 1vh;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* ---------- Base ---------- */
@@ -32,13 +37,46 @@ body{
   overflow:hidden;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
+
+  /* mobile polish */
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+  scrollbar-gutter: stable both-edges;
 }
 
-/* Optional SW title font */
+/* ---- StarJedi Outline (your screenshot font) ---- */
 @font-face{
-  font-family:"StarJedi";
-  src: url("../assets/fonts/starjedi/starjedi.ttf") format("truetype");
+  font-family: "StarJediOutline";
+  src: url("../assets/fonts/starboba/starjedioutline.ttf") format("truetype");
   font-display: swap;
+}
+
+/* point the title at the outline font */
+.title{
+  font-family: "StarJediOutline","Segoe UI",system-ui,sans-serif;
+  line-height: 0.9;         /* tighter line box so it won’t look cropped */
+  letter-spacing: .02em;
+  word-spacing: .08em;
+}
+.title .word{ display:inline-block; margin:0 .06em; }
+.title .v-lc{ display:inline-block; transform:scale(.78) translateY(.16em); }
+
+/* Visual “lowercase” V: same font, just scaled and lowered a bit */
+.title .v-lc{
+  display:inline-block;
+  transform: scale(0.78) translateY(0.16em);
+  transform-origin: left bottom;
+  line-height: 0;          /* keeps the line height tidy */
+}
+
+/* Make sure we’re not shrinking/styling the whole 'van' differently */
+.title .word--van{
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
 }
 
 /* Links & buttons */
@@ -52,6 +90,36 @@ a:focus-visible{
   border-radius:10px;
 }
 
+/* --- Viewport height: fallback first, then dvh, then svh --- */
+
+/* 1) Fallback using JS-updated --vh for older iOS / odd browsers */
+.bg-canvas,
+.crawl-wrapper,
+.stage{
+  height: calc(var(--vh, 1vh) * 100);
+  min-height: calc(var(--vh, 1vh) * 100);
+}
+
+/* 2) Prefer modern dynamic viewport if supported */
+@supports (height: 100dvh){
+  .bg-canvas,
+  .crawl-wrapper,
+  .stage{
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+}
+
+/* 3) If svh is supported, let it win (handles visible viewport on mobile) */
+@supports (height: 100svh){
+  .bg-canvas,
+  .crawl-wrapper,
+  .stage{
+    height: 100svh;
+    min-height: 100svh;
+  }
+}
+
 /* ---------- Starfield canvas ---------- */
 .bg-canvas{
   position:fixed;
@@ -62,70 +130,97 @@ a:focus-visible{
   background:radial-gradient(1200px 800px at 20% 15%,#0a0b12 0,#06070d 60%,#000 100%);
 }
 
-/* ---------- Intro / crawl ---------- */
+/* ---------- Intro / crawl (READABLE) ---------- */
 .crawl-wrapper{
   position:relative;
-  height:100vh;
   display:grid;
   place-items:center;
   background:transparent;
-  perspective:420px;
+  perspective: 360px;          /* gentler perspective so text doesn’t shrink too much */
   z-index:2;
-  overflow:hidden; /* keep crawl inside view */
+  overflow:hidden;
 }
-/* soft fade top/bottom so text never looks harsh when it scrolls off */
 .crawl-wrapper::before,
 .crawl-wrapper::after{
   content:"";
-  position:absolute;left:0;right:0;height:16vh;pointer-events:none;
-  z-index:1;
+  position:absolute;left:0;right:0;height:16vh;pointer-events:none;z-index:1;
 }
-.crawl-wrapper::before{
-  top:0;
-  background:linear-gradient(#000, transparent);
-}
-.crawl-wrapper::after{
-  bottom:0;
-  background:linear-gradient(transparent, #000);
-}
+.crawl-wrapper::before{ top:0;    background:linear-gradient(#000, transparent); }
+.crawl-wrapper::after{  bottom:0; background:linear-gradient(transparent, #000); }
+
 .crawl{
   text-align:center;
-  transform:rotateX(25deg);
-  animation:crawl var(--crawl-duration) linear forwards;
-  max-width:min(880px,92vw);
+  max-width:min(940px,92vw);
   padding:0 16px;
+  animation: crawlReadable var(--crawl-duration) linear forwards;
+  transform: translateY(40vh) scale(1) rotateX(12deg);
+  will-change: transform;
 }
-.crawl--slow{animation-duration:var(--crawl-duration)}
+.crawl--slow{ animation-duration: calc(var(--crawl-duration) * 1.35); }
 
+/* keep your visual styles for the title, but don't override the font-family */
 .title{
-  font-family:"StarJedi","Segoe UI",sans-serif;
-  letter-spacing:1px;
-  font-size:clamp(2.4rem,6vw,4rem);
+  /* font-family: "StarJedi","Segoe UI",sans-serif;  <-- removed to keep Outline */
+  letter-spacing:.5px;
+  font-size:clamp(2rem,8vw,4.6rem);
   margin:0 0 .6em;
   color:var(--yellow);
   text-shadow:0 2px 14px rgba(0,0,0,.5);
 }
 .subtitle{
-  font-size:clamp(1.2rem,3.8vw,2rem);
+  font-size:clamp(1.05rem,4.5vw,2rem);
   margin:0 0 1.25em;
   color:#e9ecff;
-  text-shadow:0 1px 10px rgba(0,0,0,.4);
+  opacity:.95;
+  text-shadow:0 1px 10px rgba(0,0,0,.35);
+}
+.crawl p{
+  margin:.9em 0;
+  color:#f4f6ff;
+  opacity:.9;
+  line-height:1.7;
+  font-size:clamp(.95rem,3.6vw,1.1rem);
+}
+.crawl .whisper{ font-style:italic; opacity:.8 }
+.crawl .callout{ color:var(--yellow); font-weight:700 }
+
+/* give the crawl safe breathing room inside the clipped wrapper */
+.crawl-wrapper{
+  padding-left:  max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 
-@keyframes crawl{
-  0%{transform:rotateX(25deg) translateZ(0) translateY(52vh)}
-  100%{transform:rotateX(25deg) translateZ(-3000px) translateY(-220vh)}
+/* slight inset so overhanging glyphs don’t touch the edge */
+.title{ padding-inline: .2em; }
+
+/* phones: a touch more padding for the crawl block */
+@media (max-width: 520px){
+  .crawl{ padding-inline: clamp(20px, 6vw, 28px); }
+}
+
+@keyframes crawlReadable{
+  0%   { transform: translateY(40vh)  scale(1.00) rotateX(12deg); }
+  50%  { transform: translateY(-50vh) scale(0.90) rotateX(15deg); }
+  100% { transform: translateY(-165vh) scale(0.82) rotateX(18deg); }
+}
+
+/* Reduced motion = no crawl, just center */
+@media (prefers-reduced-motion:reduce){
+  .crawl{ animation:none; transform:none }
 }
 
 /* Start button */
 #start-button,.btn-start{
-  position:absolute;bottom:40px;left:50%;transform:translateX(-50%);
+  position:absolute;left:50%;transform:translateX(-50%);
+  bottom: clamp(16px, 2.8vh, 40px);
   padding:12px 24px;
   background:var(--yellow);color:#000;
   font-weight:700;border:0;border-radius:10px;cursor:pointer;
   box-shadow:0 8px 24px rgba(0,0,0,.35);
   z-index:3;
   transition:filter .15s ease, transform .08s ease;
+  min-height:44px;                /* touch size */
+  margin-bottom: max(0px, var(--safe-bottom));
 }
 #start-button:hover{filter:brightness(.95)}
 #start-button:active{transform:translateX(-50%) scale(.98)}
@@ -142,7 +237,6 @@ a:focus-visible{
 }
 .warp.active{opacity:1}
 
-/* Optional warp color themes */
 .warp.theme-cyan  { --warp-tint-1: rgba(120,215,255,.18); --warp-tint-2: rgba(54,130,255,.12); }
 .warp.theme-violet{ --warp-tint-1: rgba(205,153,255,.18); --warp-tint-2: rgba(131,78,255,.12); }
 .warp.theme-magma { --warp-tint-1: rgba(255,142,98,.18);  --warp-tint-2: rgba(255,68,68,.12); }
@@ -156,21 +250,20 @@ a:focus-visible{
 
 /* ---------- Stage (planets + ship) ---------- */
 .stage{
-  position:relative;width:100vw;height:100vh;
+  position:relative;width:100vw;
   z-index:2;
-  cursor:default;          /* normal mouse */
+  cursor:default;
   touch-action:manipulation;
+  contain: content; /* PERF: isolate layout/paint */
 }
 .stage[hidden]{display:none}
 
-/* Planet canvas ABOVE ship3d so planets occlude the ship */
 #fps-canvas{
   position:absolute;inset:0;width:100%;height:100%;display:block;
   z-index:2;
   will-change:transform;
 }
 
-/* 3D ship canvas — BEHIND planets */
 .ship3d-canvas{
   position:absolute;inset:0;width:100%;height:100%;
   z-index:1;
@@ -194,7 +287,7 @@ a:focus-visible{
   to{transform:translate(-50%,-50%) scale(2.6);opacity:0}
 }
 
-/* ---------- Landing overlay (planet surface) ---------- */
+/* ---------- Landing overlay ---------- */
 #landing,.landing{
   position:fixed;inset:0;z-index:30;
   display:grid;grid-template-columns:1fr;grid-template-rows:1fr;
@@ -211,14 +304,31 @@ a:focus-visible{
 #landing .landing__panel,.landing .landing__panel{
   grid-area:1 / 1;
   align-self:center;justify-self:center;
-  width:min(var(--panel-max-w),92vw);max-height:86vh;overflow:auto;
-  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
-  background:rgba(10,12,20,.55);
-  border:1px solid var(--panel-border);border-radius:16px;padding:20px;
+  width:min(var(--panel-max-w),92vw);
+  max-height:86vh;overflow:auto;
+
+  -webkit-backdrop-filter:blur(10px);
+          backdrop-filter:blur(10px);
+  background:rgba(10,12,20,.58);
+  border:1px solid var(--panel-border);
+  border-radius:16px;
+  padding:26px 24px 22px;
+
   box-shadow:0 22px 80px rgba(0,0,0,.55);
   color:var(--panel-text);
   transform:translateY(8px) scale(.985);
   opacity:0;
+  position:relative;
+  contain: content; /* PERF */
+}
+
+/* gentle inner vignette reduces high-contrast edges behind text */
+.landing__panel::before{
+  content:"";
+  position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  background:
+    radial-gradient(900px 600px at -10% -20%, rgba(120,215,255,.06), transparent 60%),
+    radial-gradient(700px 500px at 120% 120%, rgba(40,54,92,.08), transparent 65%);
 }
 
 @keyframes panelIn{
@@ -227,8 +337,15 @@ a:focus-visible{
 }
 #landing:not([hidden]) .landing__panel{animation:panelIn .28s ease-out both}
 
+/* Mobile-safe panel height + padding + safe areas */
+#landing .landing__panel,
+.landing .landing__panel{
+  padding: clamp(16px, 3.6vw, 26px);
+  max-height: calc(100dvh - max(24px, var(--safe-top)) - max(24px, var(--safe-bottom)));
+}
+
 #landing .landing__panel h2,.landing .landing__panel h2{
-  margin:0 0 10px;color:#cfe1ff;font-size:clamp(1.4rem,3vw,2rem)
+  margin:0 0 10px;color:#cfe1ff;font-size:clamp(1.3rem,3.8vw,2rem)
 }
 #landing .landing__panel h3{
   margin:18px 0 8px;color:#d8e6ff;font-weight:600;font-size:1.05rem
@@ -238,30 +355,30 @@ a:focus-visible{
 }
 #landing .landing__close,.landing .landing__close{
   background:transparent;border:1px solid #3a4775;color:#cfe1ff;
-  padding:8px 12px;border-radius:10px;cursor:pointer;margin-bottom:12px
+  padding:8px 12px;border-radius:10px;cursor:pointer;margin-bottom:12px;
+  transition:background .15s ease, transform .08s ease;
+  min-height:44px;
 }
-#landing .landing__close:hover{background:rgba(62,78,121,.15)}
+#landing .landing__close:hover{background:rgba(62,78,121,.18)}
+#landing .landing__close:active{transform:translateY(1px)}
 
 /* nice scroll */
 #landing .landing__panel::-webkit-scrollbar{width:10px}
-#landing .landing__panel::-webkit-scrollbar-thumb{
-  background:#2a355a;border-radius:8px
-}
-/* Firefox */
+#landing .landing__panel::-webkit-scrollbar-thumb{ background:#2a355a;border-radius:8px }
 #landing .landing__panel{scrollbar-color:#2a355a transparent;scrollbar-width:thin}
 
-/* ---------- About block (with avatar) ---------- */
+/* ---------- About block ---------- */
 .about{
   display:grid;
   grid-template-columns:96px 1fr;
   gap:16px;
   align-items:center;
+  contain: content; /* PERF */
 }
 .about__avatar{
   width:96px;height:96px;border-radius:50%;
   object-fit:cover;object-position:center;
   border:2px solid rgba(158,219,255,.35);
-  /* subtle animated glow even without wrapper */
   box-shadow:
     0 0 0 2px rgba(158,219,255,.2) inset,
     0 6px 24px rgba(0,0,0,.35),
@@ -298,15 +415,12 @@ a:focus-visible{
   .about__avatar-wrap{width:72px;height:72px}
 }
 
-/* Helpers for the wide About layout (image + rich text) */
-.about--wide{
-  grid-template-columns:120px 1fr;
-  align-items:flex-start;
-}
-.about__media{display:flex;align-items:center;justify-content:center}
-.about__bullets{color:var(--panel-sub);line-height:1.7;padding-left:18px;margin:.5rem 0 0}
+/* Helpers for the wide About layout */
+.about--wide{ grid-template-columns:120px 1fr; align-items:flex-start; }
+.about__media{ display:flex;align-items:center;justify-content:center }
+.about__bullets{ color:var(--panel-sub); line-height:1.7; padding-left:18px; margin:.5rem 0 0 }
 
-/* Fancy avatar-frame variant (used by JS template) */
+/* Fancy avatar-frame variant */
 .avatar-frame{position:relative;width:96px;height:96px}
 .avatar-frame__img{
   width:96px;height:96px;border-radius:50%;
@@ -335,13 +449,11 @@ a:focus-visible{
   border:1px solid #223055;
   border-radius:12px;
   padding:14px;
+  transition:transform .12s ease, box-shadow .12s ease;
+  contain: content; /* PERF */
 }
-.skill-group__title{
-  margin:0 0 8px;
-  color:#d7e6ff;
-  font-weight:600;
-  font-size:1rem;
-}
+.skill-group:hover{ transform:translateY(-1px); box-shadow:0 10px 26px rgba(0,0,0,.28) }
+.skill-group__title{ margin:0 0 8px; color:#d7e6ff; font-weight:600; font-size:1rem }
 .skill{display:grid;gap:6px;margin:8px 0}
 .skill__row{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .skill__name{color:#e7ecff;font-weight:600;font-size:.95rem}
@@ -361,7 +473,7 @@ a:focus-visible{
 }
 @keyframes fillBar{from{width:0%}to{width:var(--w)}}
 
-/* Optional palette variants for bars */
+/* Optional palette variants */
 .skill__fill--aqua  { background:linear-gradient(90deg,#78d7ff,#3682ff); box-shadow:0 0 12px rgba(120,215,255,.55), inset 0 -1px 0 rgba(0,0,0,.3); }
 .skill__fill--amber { background:linear-gradient(90deg,#ffd84a,#f4b800); box-shadow:0 0 12px rgba(255,216,74,.45),  inset 0 -1px 0 rgba(0,0,0,.3); }
 .skill__fill--coral { background:linear-gradient(90deg,#ff9aa2,#ff4f6d); box-shadow:0 0 12px rgba(255,159,174,.45), inset 0 -1px 0 rgba(0,0,0,.3); }
@@ -380,21 +492,21 @@ a:focus-visible{
   display:inline-flex;align-items:center;gap:8px;
   padding:8px 12px;border-radius:10px;
   background:rgba(40,54,92,.45);
-  border:1px solid #3a4775;color:#dbe7ff;text-decoration:none
+  border:1px solid #3a4775;color:#dbe7ff;text-decoration:none;
+  transition:transform .08s ease, background .15s ease, box-shadow .15s ease;
+  min-height:44px;
 }
-.link-btn:hover{background:rgba(40,54,92,.7)}
+.link-btn:hover{
+  background:rgba(40,54,92,.7);
+  box-shadow:0 10px 26px rgba(0,0,0,.26);
+  transform:translateY(-1px);
+}
 .link-btn:active{transform:translateY(1px)}
 
 /* ---------- Contact form ---------- */
-.contact{
-  display:grid;gap:12px;margin-top:8px
-}
-.contact__row{
-  display:grid;gap:12px;grid-template-columns:1fr 1fr
-}
-@media (max-width:720px){
-  .contact__row{grid-template-columns:1fr}
-}
+.contact{ display:grid; gap:12px; margin-top:8px }
+.contact__row{ display:grid; gap:12px; grid-template-columns:1fr 1fr }
+@media (max-width:720px){ .contact__row{grid-template-columns:1fr} }
 .input, .textarea{
   width:100%;
   color:#e7ecff;
@@ -402,15 +514,22 @@ a:focus-visible{
   border:1px solid #223055;
   border-radius:10px;
   padding:10px 12px;
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
 }
 .textarea{min-height:120px;resize:vertical;line-height:1.45}
 .input::placeholder,.textarea::placeholder{color:#a9b6d6}
+.input:focus{background:rgba(22,28,44,.65)}
+.textarea:focus{background:rgba(22,28,44,.65)}
 .btn{
   padding:10px 14px;border-radius:10px;border:1px solid #3a4775;
-  background:rgba(40,54,92,.55);color:#dbe7ff;cursor:pointer
+  background:rgba(40,54,92,.55);color:#dbe7ff;cursor:pointer;
+  transition:transform .08s ease, background .15s ease, box-shadow .15s ease;
+  min-height:44px;
 }
-.btn:hover{background:rgba(40,54,92,.75)}
+.btn:hover{background:rgba(40,54,92,.75); box-shadow:0 10px 26px rgba(0,0,0,.26)}
 .btn:active{transform:translateY(1px)}
+
+.input-help{ font-size:.85rem; color:#9bb0dc; margin-top:4px }
 
 /* ---------- Case studies ---------- */
 .case{
@@ -419,10 +538,11 @@ a:focus-visible{
   background:rgba(17,22,36,.5);
   border:1px solid #223055;border-radius:12px;
   padding:14px;
+  transition:transform .12s ease, box-shadow .12s ease;
+  contain: content; /* PERF */
 }
-@media (max-width:820px){
-  .case{grid-template-columns:1fr}
-}
+.case:hover{ transform:translateY(-1px); box-shadow:0 10px 26px rgba(0,0,0,.28) }
+@media (max-width:820px){ .case{grid-template-columns:1fr} }
 .case__hero{
   width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px;
   border:1px solid rgba(158,219,255,.18);
@@ -447,30 +567,24 @@ a:focus-visible{
 /* ---------- Pointer/Reduced motion media ---------- */
 @media (pointer:coarse){
   .stage{cursor:auto}
+  /* PERF: disable hover shadows on touch devices */
+  .link-btn:hover, .card:hover, .skill-group:hover, .case:hover { box-shadow:none; transform:none; }
 }
 @media (prefers-reduced-motion:reduce){
-  .crawl{animation-duration:0s;transform:none}
+  .crawl{animation:none;transform:none}
   .warp{transition:none}
   .stage{cursor:default}
   .skill__fill{animation:none}
   .about__avatar{animation:none}
 }
 
-/* ======== Additive helpers (kept separate; safe to remove later) ======== */
-
-/* Better focus states on inputs */
+/* ======== Additive helpers ======== */
 .input:focus-visible, .textarea:focus-visible{
   outline:2px solid var(--focus);
   outline-offset:2px;
   border-color:#3a77ff;
 }
-
-/* Disabled button state */
-.btn[disabled]{
-  opacity:.55; cursor:not-allowed;
-}
-
-/* Simple success/error messages for contact form JS */
+.btn[disabled]{ opacity:.55; cursor:not-allowed; }
 .contact__status{font-size:.9rem;line-height:1.5}
 .contact__status--ok{color:#a6ffbf}
 .contact__status--err{color:#ff9aa2}
@@ -478,9 +592,296 @@ a:focus-visible{
   border-color:#ff6b6b;
   box-shadow:0 0 0 1px rgba(255,107,107,.25) inset;
 }
-
-/* About wide layout tweaks on small screens */
 @media (max-width:640px){
   .about--wide{grid-template-columns:1fr;gap:14px}
   .about__media{justify-content:center}
+}
+
+/* ===================== About split/portrait ===================== */
+.about--split {
+  display: grid;
+  grid-template-columns: 1fr min(34vw, 360px);
+  gap: 22px;
+  align-items: center;
+}
+
+/* Force all About text to be left-aligned by default */
+.about--split .about__text { text-align: left; }
+.about--split .about__text h3,
+.about--split .about__text p,
+.about--split .about__text ul,
+.about--split .about__text li { text-align: left; }
+
+/* Text block */
+.about--split .about__text {
+  color: var(--panel-text);
+  animation: fadeSlide .45s ease-out both;
+  padding-right: 10px; /* gutter so text doesn’t touch portrait */
+  position: relative;
+  z-index: 1;          /* always above portrait blur */
+}
+
+/* Portrait/media block */
+.about--split .about__media {
+  position: relative;
+  justify-self: end;
+  width: min(34vw, 360px);
+  aspect-ratio: 1/1.12;
+  perspective: 600px;
+  isolation: isolate; /* prevents bleed of backdrop-filter */
+  overflow: clip;
+  z-index: 0;
+}
+
+@supports not (overflow: clip) {
+  .about--split .about__media { overflow: hidden; }
+}
+
+/* Animations */
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ====== Responsive breakpoints ====== */
+
+/* Tablets / medium screens */
+@media (max-width: 1024px) {
+  .about--split {
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
+  }
+  .about--split .about__media {
+    width: 300px;
+  }
+}
+
+/* Small tablets / large phones */
+@media (max-width: 820px) {
+  .about--split {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .about--split .about__media {
+    order: -1;                /* portrait goes on top */
+    justify-self: center;
+    width: min(80vw, 420px);  /* scale down smoothly */
+  }
+  .about--split .about__text {
+    padding-right: 0;
+    text-align: left;       /* center text on stacked layout */
+  }
+}
+
+/* Narrow phones */
+@media (max-width: 480px) {
+  .about--split {
+    gap: 16px;
+  }
+  .about--split .about__media {
+    width: min(88vw, 320px);
+  }
+  .about--split .about__text {
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+}
+
+/* ====== Soft feather/blur around portrait edges (contained) ====== */
+.portrait-neo{
+  position:absolute; inset:0;
+  background: transparent;
+  border-radius: 18px;
+  -webkit-clip-path: polygon(8% 0, 92% 0, 100% 12%, 100% 88%, 92% 100%, 8% 100%, 0 88%, 0 12%);
+          clip-path: polygon(8% 0, 92% 0, 100% 12%, 100% 88%, 92% 100%, 8% 100%, 0 88%, 0 12%);
+  box-shadow: 0 12px 40px rgba(0,0,0,.55);
+}
+.portrait-neo::after{ content:none; }
+
+.portrait-neo__img{
+  position:absolute; inset:8px;
+  width:calc(100% - 16px); height:calc(100% - 16px);
+  object-fit:cover; object-position:center 38%;
+  border-radius:14px;
+  -webkit-clip-path: polygon(8% 0, 92% 0, 100% 12%, 100% 88%, 92% 100%, 8% 100%, 0 88%, 0 12%);
+          clip-path: polygon(8% 0, 92% 0, 100% 12%, 100% 88%, 92% 100%, 8% 100%, 0 88%, 0 12%);
+  box-shadow: 0 10px 34px rgba(0,0,0,.45);
+  transform: translateZ(0) rotateX(0) rotateY(0);
+  transition: transform .28s ease, filter .28s ease;
+}
+
+/* Edge feather: now constrained to the media box so it won't blur your text */
+.portrait-fade{
+  position:absolute;
+  inset:0;                    /* keep it inside so it can't overlap text */
+  pointer-events:none;
+  -webkit-clip-path: polygon(8% 0, 92% 0, 100% 12%, 100% 88%, 92% 100%, 8% 100%, 0 88%, 0 12%);
+          clip-path: polygon(8% 0, 92% 0, 100% 12%, 100% 88%, 92% 100%, 8% 100%, 0 88%, 0 12%);
+  -webkit-backdrop-filter: blur(12px) saturate(1.05);
+          backdrop-filter: blur(12px) saturate(1.05);
+  -webkit-mask: radial-gradient(closest-side, transparent 60%, black 75%);
+          mask: radial-gradient(closest-side, transparent 60%, black 75%);
+  opacity:.9;
+}
+
+/* Hover/idle motion */
+.about__media:hover .portrait-neo__img{
+  transform: translateY(-2px) scale(1.01) rotateX(2deg) rotateY(-2deg);
+  filter: saturate(1.03);
+}
+@media (prefers-reduced-motion: reduce){
+  .about--split .about__text{animation:none}
+  .about__media:hover .portrait-neo__img{transform:none; filter:none}
+}
+
+/* ===== Card grid for Projects/Certifications ===== */
+.grid-cards{
+  display:grid; gap:14px;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  contain: content; /* PERF */
+}
+@media (max-width: 420px){
+  .grid-cards{ grid-template-columns: 1fr; }
+}
+.card{
+  background:rgba(17,22,36,.5);
+  border:1px solid #223055;
+  border-radius:12px;
+  padding:14px;
+  transition:transform .12s ease, box-shadow .12s ease, background .15s ease;
+  contain: paint; /* PERF */
+}
+.card:hover{
+  transform:translateY(-1px);
+  background:rgba(22,28,44,.55);
+  box-shadow:0 10px 26px rgba(0,0,0,.28);
+}
+.card__title{margin:0 0 6px; color:#d7e6ff; font-weight:700}
+.card__desc{margin:0 0 8px; color:var(--panel-sub)}
+.card__sub{margin:10px 0 6px; font-size:.95rem; color:#cfe1ff}
+.list{margin:0; padding-left:18px; color:var(--panel-sub); line-height:1.6}
+
+/* ===== Responsive video container ===== */
+.video-wrap{
+  position:relative; width:100%; aspect-ratio:16/9;
+  border-radius:10px; overflow:hidden;
+  border:1px solid rgba(158,219,255,.18);
+  background:#0a0f1f; margin:10px 0;
+  contain: content; /* PERF */
+}
+.video-wrap iframe, .video-wrap video{
+  position:absolute; inset:0; width:100%; height:100%; display:block; border:0;
+}
+
+/* ===== Small subhead (use under Hobbies for the “Links” title) ===== */
+.subhead{
+  margin:14px 0 6px;
+  color:#d7e6ff;
+  font-weight:600;
+  font-size:1rem;
+}
+
+/* ===== Reusable floating label (e.g., Station tooltip) ===== */
+.floating-label{
+  position:absolute;
+  transform:translate(-50%, -120%);
+  padding:6px 10px;
+  border-radius:10px;
+  background:rgba(17,22,36,.7);
+  border:1px solid #223055;
+  color:#dbe7ff;
+  font-size:.9rem;
+  pointer-events:none;
+  box-shadow:0 10px 26px rgba(0,0,0,.28);
+}
+
+/* =================== Responsive + Mobile Production Tweaks =================== */
+
+/* Touch-friendly targets globally */
+.link-btn, .btn, .landing__close, #start-button{ min-height:44px; }
+
+/* Ensure case grid wraps nicely on narrow phones */
+.grid-cards{ grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+/* Prevent portrait blur overlapping text on the smallest phones */
+@media (max-width: 480px){
+  .about--split .about__text{ padding-right: 0; }
+}
+
+/* =================== About split/portrait layout =================== */
+.about--split .about__media{
+  /* keep any blur/backdrop effects strictly inside this box */
+  overflow: clip;
+  isolation: isolate;
+  z-index: 0;
+}
+/* Fallback for browsers without overflow: clip */
+@supports not (overflow: clip){
+  .about--split .about__media{ overflow: hidden; }
+}
+/* keep text layer above any effects */
+.about--split .about__text{
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 820px){
+  .about--split .about__media{ width: min(84vw, 440px); }
+}
+
+@media (max-width: 480px){
+  .about--split{ gap: 18px; }
+  .about--split .about__text{ padding-right: 0; } /* belt & suspenders */
+}
+
+/* === PATCH: phone + ultra-short landscape optimizations (keeps portrait small & prevents cramped UI) === */
+@media (max-width: 480px){
+  .about--split .about__media{ width: clamp(170px, 52vw, 300px); }
+}
+/* very short viewports (rotated phones/split-screen) */
+@media (max-height: 420px) and (orientation: landscape){
+  .crawl{ transform: none; animation: none; }            /* avoid cropped crawl */
+  body{ overflow:auto; }                                  /* allow scroll in tight landscapes */
+  .about--split{ gap: 14px; }
+  .about--split .about__media{ width: clamp(160px, 38vw, 260px); }
+  .portrait-fade{ backdrop-filter: blur(8px) saturate(1.02); } /* slightly lighter effect */
+}
+
+/* === PATCH: optional low-end mode hook (JS can toggle <html class="low-end">) === */
+.low-end .portrait-fade{ -webkit-backdrop-filter:none !important; backdrop-filter:none !important; opacity:.45; }
+.low-end .skill__fill{ animation:none !important; }
+.low-end .about__avatar{ animation:none !important; box-shadow:0 0 0 2px rgba(158,219,255,.18) inset; }
+
+/* === PERF: skip offscreen rendering cost for heavy sections === */
+@supports (content-visibility: auto){
+  .grid-cards,
+  .skills,
+  .case,
+  .video-wrap,
+  .about{ content-visibility: auto; contain-intrinsic-size: 600px 800px; }
+  /* keep overlay panel snappy without layout thrash */
+  .landing__panel{ content-visibility: auto; contain-intrinsic-size: 700px 640px; }
+}
+
+/* === TITLE FIX: make every word the same size/font === */
+.title{
+  font-family:"StarJediOutline","Segoe UI",system-ui,sans-serif !important;
+  font-variant:normal !important;
+  text-transform:none !important;
+  line-height:0.9; letter-spacing:.02em; word-spacing:.08em;
+}
+.title .word{ display:inline-block; margin:0 .06em; }
+
+/* don't shrink/style "van" differently */
+.title .word--van{
+  font: inherit !important;
+  font-size:1em !important;
+  letter-spacing: inherit !important;
+  text-transform:none !important;
+}
+
+/* kill the mini V if markup still has it */
+.title .v-lc{
+  transform:none !important;
+  line-height:inherit !important;
 }
